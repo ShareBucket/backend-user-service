@@ -5,6 +5,8 @@ VisualStudioVersion = 17.4.33205.214
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UserMicroService", "UserMicroService.csproj", "{E21485A1-35DB-4F64-A1FF-7E6F993DC3EE}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JwtMiddlewareClient", "..\backend-jwt-middleware-client\JwtMiddlewareClient.csproj", "{FC9AE03B-51E3-4949-8340-0797A83C1AE3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{E21485A1-35DB-4F64-A1FF-7E6F993DC3EE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E21485A1-35DB-4F64-A1FF-7E6F993DC3EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E21485A1-35DB-4F64-A1FF-7E6F993DC3EE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FC9AE03B-51E3-4949-8340-0797A83C1AE3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FC9AE03B-51E3-4949-8340-0797A83C1AE3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FC9AE03B-51E3-4949-8340-0797A83C1AE3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FC9AE03B-51E3-4949-8340-0797A83C1AE3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
