@@ -5,6 +5,7 @@ using ShareBucket.UserMicroService.Models.Users;
 using BCryptNet = BCrypt.Net.BCrypt;
 using ShareBucket.UserMicroService.Helpers;
 using ShareBucket.JwtMiddlewareClient.Services;
+using UserMicroService.Models.Users;
 
 namespace ShareBucket.UserMicroService.Services
 {
@@ -14,8 +15,12 @@ namespace ShareBucket.UserMicroService.Services
         IEnumerable<User> GetAll();
         User GetById(int id);
         void Register(RegisterRequest model);
-        void Update(int id, UpdateRequest model);
-        void Delete(int id);
+        void Update(User user, UpdateRequest model);
+        void Delete(User user);
+        bool AddFriend(User user, string userEmail);
+        ICollection<UserDataResponse> GetFriends(User user);
+        bool IsFriend(User user, string userEmail);
+        bool RemoveFriend(User user, string userEmail);
     }
 
     public class UserService : IUserService
@@ -65,7 +70,7 @@ namespace ShareBucket.UserMicroService.Services
         {
             // validate
             if (_context.Users.Any(x => x.Email == model.Email))
-                throw new AppException("Username '" + model.Email + "' is already taken");
+                throw new AppException("Email '" + model.Email + "' is already taken");
 
             // map model to new user object
             var user = _mapper.Map<User>(model);
@@ -78,9 +83,8 @@ namespace ShareBucket.UserMicroService.Services
             _context.SaveChanges();
         }
 
-        public void Update(int id, UpdateRequest model)
+        public void Update(User user, UpdateRequest model)
         {
-            var user = getUser(id);
 
             // validate
             if (model.Email != user.Email && _context.Users.Any(x => x.Email == model.Email))
@@ -96,9 +100,35 @@ namespace ShareBucket.UserMicroService.Services
             _context.SaveChanges();
         }
 
-        public void Delete(int id)
+        public void Delete(User user)
         {
-            var user = getUser(id);
+            // Remove all the friendships that the user is involved in
+            var friendships = _context.Friendships.Where(f => f.UserId == user.Id || f.FriendId == user.Id);
+            _context.Friendships.RemoveRange(friendships);
+
+            // Remove all the memoryArea that the user is owner
+            // Select all the memoryAreas that the user is owner
+            var memoryAreas = _context.MemoryAreas.Where(m => m.UserOwnerId == user.Id);
+
+
+            // Remove all the folder of the memoryAreas
+            foreach (var memoryArea in memoryAreas)
+            {
+                // Remove all the metadatas of the memoryAreas
+                var metadatas = _context.Metadatas.Where(m => m.MemoryAreaId == memoryArea.Id);
+                _context.Metadatas.RemoveRange(metadatas);
+
+                string localFilePath = Path.GetFullPath(Path.Combine(Environment.CurrentDirectory, $"UploadedFiles/{memoryArea.Id}"));
+
+                if (Directory.Exists(localFilePath))
+                {
+                    Directory.Delete(localFilePath, true);
+                }
+            }
+
+            _context.MemoryAreas.RemoveRange(memoryAreas);
+
+            // Remove the user
             _context.Users.Remove(user);
             _context.SaveChanges();
         }
@@ -110,6 +140,84 @@ namespace ShareBucket.UserMicroService.Services
             var user = _context.Users.Find(id);
             if (user == null) throw new KeyNotFoundException("User not found");
             return user;
+        }
+
+        public bool AddFriend(User user, string userEmail)
+        {
+            var friend = _context.Users.SingleOrDefault(u => u.Email == userEmail);
+            if (friend == null)
+            {
+                return false;
+            }
+            
+            var userEntry = _context.Entry(user);
+            userEntry.Collection(u => u.Friendships).Load();
+
+            _context.Friendships.Add(new Friendship { UserId = user.Id, FriendId = friend.Id });
+            _context.SaveChanges();
+            return true;
+        }
+
+        public ICollection<UserDataResponse> GetFriends(User user)
+        {
+            var userEntry = _context.Entry(user);
+            userEntry.Collection(u => u.Friendships).Load();
+            
+            // Load only the friend data (not the user data)
+            var friends = _context.Friendships
+                .Where(f => f.UserId == user.Id || f.FriendId == user.Id)
+                .Select(f => f.UserId == user.Id ? f.Friend : f.User)
+                .Select(u => new UserDataResponse
+                { 
+                    Id = u.Id, 
+                    Email = u.Email, 
+                    FirstName = u.FirstName, 
+                    LastName = u.LastName 
+                })
+                .ToList();
+
+            // Select the friend data
+            
+            
+
+
+            return friends;
+        }
+
+        public bool IsFriend(User user, string userEmail)
+        {
+            var userEntry = _context.Entry(user);
+            userEntry.Collection(u => u.Friendships).Load();
+
+            var friend = _context.Users.SingleOrDefault(u => u.Email == userEmail);
+            if (friend == null)
+            {
+                return false;
+            }
+
+            return user.Friendships.Any(f => f.FriendId == friend.Id || f.UserId == friend.Id);
+        }
+
+        public bool RemoveFriend(User user, string userEmail)
+        {
+            var userEntry = _context.Entry(user);
+            userEntry.Collection(u => u.Friendships).Load();
+
+            var friend = _context.Users.SingleOrDefault(u => u.Email == userEmail);
+            if (friend == null)
+            {
+                return false;
+            }
+
+            var friendship = user.Friendships.SingleOrDefault(f => f.FriendId == friend.Id || f.UserId == friend.Id);
+            if (friendship == null)
+            {
+                return false;
+            }
+
+            _context.Friendships.Remove(friendship);
+            _context.SaveChanges();
+            return true;
         }
     }
 }
